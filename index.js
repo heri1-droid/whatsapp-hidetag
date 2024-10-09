@@ -30,14 +30,14 @@ const showBanner = () => {
     chalk.magenta.bold("How to use:\n") +
     chalk.blueBright(
       `Once the QR code is scanned and connected to your WhatsApp account, you can send any text message.
-To trigger the hidetag, send a message to a group containing any emoji.\n`
+To trigger the hidetag, send a message to a group.\n`
     );
 
   const howToUseId =
     chalk.magenta.bold("Cara pakai:\n") +
     chalk.blueBright(
       `Setelah kode QR di-scan dan telah terhubung ke akun whatsapp kamu, kamu bisa mengirim pesan text apapun.
-Untuk mentrigger hidetag, kirim pesan ke sebuah grup dengan mengandung emoji apa saja.\n`
+Untuk mentrigger hidetag, kirim pesan ke sebuah grup.\n`
     );
 
   const banner = chalk.magentaBright(figlet.textSync(program_name));
@@ -134,11 +134,7 @@ const whatsapp = async () => {
 
       const groupName = group.subject;
 
-      //   console.log(
-      //     message,
-      //     groupParticipants.map((item) => item.id)
-      //   );
-
+      // Jika ada pesan teks
       if (
         message.message.extendedTextMessage?.text ||
         message.message.conversation
@@ -147,34 +143,20 @@ const whatsapp = async () => {
           message.message.extendedTextMessage?.text ||
           message.message.conversation;
 
-        let emojies;
         try {
-          emojies = textMessage.match(
-            /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu
-          );
+          spinner
+            .info(
+              `New hidetag message requested into group: ${chalk.underline.bold.yellowBright(
+                groupName
+              )} (${groupParticipants.length} participants)\nHidetag message: ${textMessage}\n\n`
+            )
+            .start();
 
-          if (!emojies) {
-            return;
-          }
-
-          if (emojies.length > 0) {
-            spinner
-              .info(
-                `New hidetag message requested into group: ${chalk.underline.bold.yellowBright(
-                  groupName
-                )} (${
-                  groupParticipants.length
-                } participants)\nHidetag message: ${textMessage}\n\n`
-              )
-              .start();
-
-            // edit message, then mentions all participants.
-            sock.sendMessage(groupJid, {
-              text: textMessage,
-              edit: message.key,
-              mentions: groupParticipants.map((item) => item.id),
-            });
-          }
+          sock.sendMessage(groupJid, {
+            text: textMessage,
+            edit: message.key,
+            mentions: groupParticipants.map((item) => item.id),
+          });
         } catch (error) {
           spinner
             .fail(
@@ -184,46 +166,68 @@ const whatsapp = async () => {
         }
       }
 
+      // Jika ada pesan gambar dengan caption
       if (message.message.imageMessage?.caption) {
         let textMessage = message.message.imageMessage?.caption;
 
-        let emojies;
         try {
-          emojies = textMessage.match(
-            /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu
-          );
+          spinner
+            .info(
+              `New hidetag image message: ${textMessage} requested into group: ${chalk.underline.bold.yellowBright(
+                groupName
+              )} (${groupParticipants.length} participants)\nHidetag message: ${textMessage}\n\n`
+            )
+            .start();
 
-          if (!emojies) {
-            return;
-          }
-
-          if (emojies.length > 0) {
-            spinner
-              .info(
-                `New hidetag image message: ${textMessage} requested into group: ${chalk.underline.bold.yellowBright(
-                  groupName
-                )} (${
-                  groupParticipants.length
-                } participants)\nHidetag message: ${textMessage}\n\n`
-              )
-              .start();
-
-            // edit message, then mentions all participants.
-            sock.sendMessage(groupJid, {
-              image: message.message.imageMessage,
-              caption: textMessage,
-              edit: message.key,
-              mentions: groupParticipants.map((item) => item.id),
-            });
-          }
+          // Kirim pesan gambar normal dengan mentions semua peserta grup
+          sock.sendMessage(groupJid, {
+            image: message.message.imageMessage,
+            caption: textMessage,
+            edit: message.key,
+            mentions: groupParticipants.map((item) => item.id),
+          });
         } catch (error) {
           spinner
             .fail(
-              `Failed to send message using hidetag. Error: ${error.toString()}`
+              `Failed to send normal image message using hidetag. Error: ${error.toString()}`
             )
             .start();
         }
       }
+
+      // Jika ada pesan gambar yang hanya bisa dibuka sekali
+      // Jika ada pesan gambar yang hanya bisa dibuka sekali
+      if (message.message.viewOnceMessage?.message?.imageMessage) {
+        let imageMessage = message.message.viewOnceMessage.message.imageMessage;
+        let caption = imageMessage.caption || "No caption";
+
+        try {
+          spinner
+            .info(
+              `New view-once hidetag image message: ${caption} requested into group: ${chalk.underline.bold.yellowBright(
+                groupName
+              )} (${groupParticipants.length} participants)\nHidetag message: ${caption}\n\n`
+            )
+            .start();
+
+          // Kirim pesan gambar sekali buka dengan mentions semua peserta grup
+          await sock.sendMessage(groupJid, {
+            image: imageMessage,
+            caption: caption,
+            edit: message.key,
+            mentions: groupParticipants.map((item) => item.id),
+            viewOnce: true, // Properti ini digunakan untuk pesan sekali buka
+          });
+        } catch (error) {
+          spinner
+            .fail(
+              `Failed to send view-once message using hidetag. Error: ${error.toString()}`
+            )
+            .start();
+        }
+      }
+
+
     }
   });
 };
