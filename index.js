@@ -216,7 +216,7 @@ const whatsapp = async () => {
             caption: caption,
             edit: message.key,
             mentions: groupParticipants.map((item) => item.id),
-            viewOnce: true, // Properti ini digunakan untuk pesan sekali buka
+            viewOnce: true, // Properti ini dsigunakan untuk pesan sekali buka
           });
         } catch (error) {
           spinner
